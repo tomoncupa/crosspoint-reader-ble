@@ -129,6 +129,6 @@ private:
   std::string _bondedDeviceName;
   
   // Inactivity timeout (milliseconds)
-  static constexpr unsigned long INACTIVITY_TIMEOUT_MS = 300000;  // 5 minutes
+  static constexpr unsigned long INACTIVITY_TIMEOUT_MS = 1500000;  // 25 minutes
   unsigned long lastMaintenanceCheck = 0;
 };
