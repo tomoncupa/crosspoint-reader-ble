@@ -84,7 +84,6 @@ class ActivityManager {
   void goToRecentBooks();
   void goToBrowser();
   void goToReader(std::string path);
-  void goToGame();
   void goToIpadSync();
   void goToSleep();
   void goToBoot();

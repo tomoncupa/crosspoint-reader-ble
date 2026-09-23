@@ -23,7 +23,6 @@
 #include "components/icons/cog.h"
 #include "components/icons/folder.h"
 #include "components/icons/folder2.h"
-#include "components/icons/game.h"
 #include "components/icons/library.h"
 #include "components/icons/settings.h"
 #include "components/icons/transfer.h"
@@ -698,9 +697,6 @@ void HomeActivity::render(RenderLock&&) {
       case Library:
         icon = LibraryIcon;
         break;
-      case Book:
-        icon = GameIcon;
-        break;
       case Recent:
       default:
         icon = BookIcon;
@@ -733,8 +729,6 @@ void HomeActivity::onRecentsOpen() { activityManager.goToRecentBooks(); }
 void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
-
-void HomeActivity::onGameOpen() { activityManager.goToGame(); }
 
 void HomeActivity::onIpadSyncOpen() { activityManager.goToIpadSync(); }
 

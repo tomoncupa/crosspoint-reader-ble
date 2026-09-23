@@ -15,9 +15,6 @@
 #include "settings/BluetoothSettingsActivity.h"
 #include "settings/SettingsActivity.h"
 #include "CrossPointSettings.h"
-#include "game/GameActivity.h"
-#include "game/GamePickerActivity.h"
-#include "game/GameTitleActivity.h"
 #include "util/FullScreenMessageActivity.h"
 
 void ActivityManager::begin() {
@@ -196,24 +193,6 @@ void ActivityManager::goToBrowser() {
 
 void ActivityManager::goToReader(std::string path) {
   replaceActivity(std::make_unique<ReaderActivity>(renderer, mappedInput, std::move(path)));
-}
-
-void ActivityManager::goToGame() {
-  if constexpr (!CrossPointSettings::deepMinesEnabled) {
-    LOG_DBG("ACT", "Deep Mines is disabled in this build");
-    goHome();
-    return;
-  }
-
-  replaceActivity(std::make_unique<GamePickerActivity>(
-      renderer, mappedInput,
-      [this]() { goHome(); },
-      [this]() {
-        if (!GAME_STATE.hasSaveFile()) {
-          GAME_STATE.newGame(esp_random());
-        }
-        replaceActivity(std::make_unique<GameActivity>(renderer, mappedInput, [] { activityManager.goToGame(); }));
-      }));
 }
 
 void ActivityManager::goToIpadSync() {

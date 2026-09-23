@@ -25,7 +25,6 @@ class HomeActivity final : public Activity {
   void onRecentsOpen();
   void onSettingsOpen();
   void onFileTransferOpen();
-  void onGameOpen();
   void onIpadSyncOpen();
   void onOpdsBrowserOpen();
 
