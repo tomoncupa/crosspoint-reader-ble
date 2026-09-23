@@ -226,7 +226,7 @@ void EpubReaderActivity::loop() {
                                             mappedInput.getHeldTime(MappedInputManager::Button::Right));
 
   // any botton press when at end of the book goes back to the last page
-  if (currentSpineIndex > 0 && currentSpineIndex >= epub->getSpineItemsCount()) {
+  if ((prevTriggered || nextTriggered) && currentSpineIndex > 0 && currentSpineIndex >= epub->getSpineItemsCount()) {
     // Left the end screen by paging back, so it was not the end after all
     IpadSync::noteNotFinished(epub->getPath());
     currentSpineIndex = epub->getSpineItemsCount() - 1;
@@ -466,7 +466,7 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
                                if (n != 4) return;
                                const int spine = d[0] + (d[1] << 8);
                                const int page = d[2] + (d[3] << 8);
-                               if (spine != currentSpineIndex || (section && section->currentPage != page)) {
+                               if (spine != currentSpineIndex || !section || section->currentPage != page) {
                                  RenderLock lock(*this);
                                  currentSpineIndex = spine;
                                  nextPageNumber = page;

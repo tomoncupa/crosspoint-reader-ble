@@ -146,6 +146,9 @@ void armChargingSync() {
   if (gpio.isUsbConnected() && IpadSync::hasSetup()) esp_sleep_enable_timer_wakeup(CHARGING_SYNC_EVERY_US);
 }
 
+static volatile bool gPowerTapped = false;
+void IRAM_ATTR onPowerTap() { gPowerTapped = true; }
+
 // Returns only when the power button was pressed during the sync: the device then starts up as normal
 void chargingSyncThenSleep() {
   if (gpio.isUsbConnected() && IpadSync::hasSetup()) {
@@ -156,11 +159,12 @@ void chargingSyncThenSleep() {
     if (IpadSync::loadSetup(setup) && IpadSync::connectSavedWifi(20000)) {
       IpadSync::syncClock();
       IpadSync::Options options;
-      options.shouldStop = [] {
-        gpio.update();
-        return gpio.isPressed(HalGPIO::BTN_POWER);
-      };
+      // A tap is caught by an interrupt, so it counts even while a download is waiting
+      gPowerTapped = false;
+      attachInterrupt(digitalPinToInterrupt(InputManager::POWER_BUTTON_PIN), onPowerTap, FALLING);
+      options.shouldStop = [] { return gPowerTapped; };
       const auto outcome = IpadSync::run(setup, options);
+      detachInterrupt(digitalPinToInterrupt(InputManager::POWER_BUTTON_PIN));
       LOG_INF("MAIN", "Charging sync %s", outcome.ok ? "done" : outcome.error.c_str());
       if (outcome.stopped) {
         IpadSync::wifiOff();

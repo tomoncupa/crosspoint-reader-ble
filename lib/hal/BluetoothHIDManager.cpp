@@ -643,6 +643,8 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address, uint32_t t
 
 bool BluetoothHIDManager::disconnectFromDevice(const std::string& address) {
   LOG_INF("BT", "Disconnecting from device %s", address.c_str());
+  // Disconnected on purpose: no quiet retries bringing it back
+  _lastRemoteActivityMs = 0;
   
   auto it = std::find_if(_connectedDevices.begin(), _connectedDevices.end(),
     [&address](const ConnectedDevice& dev) { return dev.address == address; });

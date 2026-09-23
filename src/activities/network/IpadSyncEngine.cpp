@@ -178,7 +178,7 @@ int getString(const std::string& url, std::string& out) {
 int getStream(const std::string& url, Stream& sink) {
   Http h(url);
   const int code = h.http.GET();
-  if (code == HTTP_CODE_OK) h.http.writeToStream(&sink);
+  if (code == HTTP_CODE_OK && h.http.writeToStream(&sink) < 0) return -1;  // cut off part way
   return code;
 }
 
@@ -472,6 +472,7 @@ Outcome run(const Setup& setup, const Options& options) {
     return out;
   };
   auto stop = [&options, &out]() {
+    if (out.stopped) return true;
     if (!options.shouldStop || !options.shouldStop()) return false;
     out.stopped = true;
     return true;
@@ -609,7 +610,10 @@ Outcome run(const Setup& setup, const Options& options) {
         }
         const std::string ext = extOf(r.name);
         const std::string stem = r.name.substr(0, r.name.size() - ext.size() - 1);
-        const std::string dest = std::string(BOOKS_DIR) + "/" + StringUtils::sanitizeFilename(stem) + "." + ext;
+        // Two iPad names can clean up to the same file name here; never write over another book
+        const std::string clean = std::string(BOOKS_DIR) + "/" + StringUtils::sanitizeFilename(stem);
+        std::string dest = clean + "." + ext;
+        for (int k = 2; Storage.exists(dest.c_str()) && k < 100; k++) dest = clean + " (" + std::to_string(k) + ")." + ext;
         const std::string part = dest + ".part";
         const std::string label = r.title.empty() ? r.name : r.title;
         FsFile f;
@@ -632,7 +636,6 @@ Outcome run(const Setup& setup, const Options& options) {
           downloadFailed++;
           continue;
         }
-        if (Storage.exists(dest.c_str())) Storage.remove(dest.c_str());
         Storage.rename(part.c_str(), dest.c_str());
         if (ext == "epub") Epub(dest, CACHE_DIR).clearCache();
         found = dest;
@@ -728,7 +731,7 @@ Outcome run(const Setup& setup, const Options& options) {
     }
     if (localMoved && now != 0) {
       char row[80];
-      snprintf(row, sizeof(row), ":{\"p\":%.5f,\"t\":%lld}", localP, static_cast<long long>(now));
+      snprintf(row, sizeof(row), ":{\"p\":%.5f,\"t\":%lld}", pull ? remoteP : localP, static_cast<long long>(now));
       x4Rows += (x4Rows.empty() ? "" : ",") + jstr(rec.key) + row;
     }
     saveIndex(index);
