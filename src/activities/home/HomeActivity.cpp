@@ -32,9 +32,7 @@
 
 int HomeActivity::getMenuItemCount() const {
   int actionCount = hasOpdsUrl ? 4 : 3;  // Browse, OPDS?, Network/File Transfer, Settings
-  if constexpr (CrossPointSettings::deepMinesEnabled) {
-    actionCount += 1;  // Games
-  }
+  actionCount += 1;  // iPad Sync, in the slot Games had
   if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::CARDS) {
     return 2 + actionCount;  // preview card + recents card + action cards (no virtual pet in this build)
   }
@@ -381,7 +379,7 @@ void HomeActivity::loop() {
       const int fileBrowserIdx = idx++;
       const int opdsLibraryIdx = hasOpdsUrl ? idx++ : -1;
       const int fileTransferIdx = idx++;
-      const int gameIdx = CrossPointSettings::deepMinesEnabled ? idx++ : -1;
+      const int ipadSyncIdx = idx++;
       const int settingsIdx = idx;
 
       if (menuSelectedIndex == recentsIdx) {
@@ -392,8 +390,8 @@ void HomeActivity::loop() {
         onOpdsBrowserOpen();
       } else if (menuSelectedIndex == fileTransferIdx) {
         onFileTransferOpen();
-      } else if (CrossPointSettings::deepMinesEnabled && menuSelectedIndex == gameIdx) {
-        onGameOpen();
+      } else if (menuSelectedIndex == ipadSyncIdx) {
+        onIpadSyncOpen();
       } else if (menuSelectedIndex == settingsIdx) {
         onSettingsOpen();
       }
@@ -419,7 +417,7 @@ void HomeActivity::loop() {
     const int fileBrowserIdx = idx++;
     const int opdsLibraryIdx = hasOpdsUrl ? idx++ : -1;
     const int fileTransferIdx = idx++;
-    const int gameIdx = CrossPointSettings::deepMinesEnabled ? idx++ : -1;
+    const int ipadSyncIdx = idx++;
     const int settingsIdx = idx;
 
     if (menuSelectedIndex == fileBrowserIdx) {
@@ -428,8 +426,8 @@ void HomeActivity::loop() {
       onOpdsBrowserOpen();
     } else if (menuSelectedIndex == fileTransferIdx) {
       onFileTransferOpen();
-    } else if (CrossPointSettings::deepMinesEnabled && menuSelectedIndex == gameIdx) {
-      onGameOpen();
+    } else if (menuSelectedIndex == ipadSyncIdx) {
+      onIpadSyncOpen();
     } else if (menuSelectedIndex == settingsIdx) {
       onSettingsOpen();
     }
@@ -460,10 +458,10 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.insert(menuIcons.begin() + 1, Library);
   }
 
-  if constexpr (CrossPointSettings::deepMinesEnabled) {
+  {
     const auto settingsPos = static_cast<int>(menuItems.size()) - 1;
-    menuItems.insert(menuItems.begin() + settingsPos, tr(STR_GAMES));
-    menuIcons.insert(menuIcons.begin() + settingsPos, Book);
+    menuItems.insert(menuItems.begin() + settingsPos, "iPad Sync");
+    menuIcons.insert(menuIcons.begin() + settingsPos, Transfer);
   }
 
   if (!isCardsTheme) {
@@ -737,5 +735,7 @@ void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
 
 void HomeActivity::onGameOpen() { activityManager.goToGame(); }
+
+void HomeActivity::onIpadSyncOpen() { activityManager.goToIpadSync(); }
 
 void HomeActivity::onOpdsBrowserOpen() { activityManager.goToBrowser(); }

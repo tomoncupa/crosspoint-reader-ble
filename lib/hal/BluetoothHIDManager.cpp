@@ -1712,7 +1712,9 @@ void BluetoothHIDManager::checkAutoReconnect(bool userInputDetected) {
   // Reconnect is user-driven while reading: a local button event, or a quiet retry
   // while the remote is still inside its inactivity window (it may have dozed off itself).
   const bool withinQuietWindow = _lastRemoteActivityMs != 0 && (now - _lastRemoteActivityMs) < INACTIVITY_TIMEOUT_MS;
-  const bool quietRetryDue = withinQuietWindow && (lastReconnectAttempt == 0 || now - lastReconnectAttempt >= QUIET_RETRY_MS);
+  // Every 30 s while the remote only just went quiet, then every 2 minutes, to spare the battery
+  const unsigned long retryEvery = (now - _lastRemoteActivityMs) < 300000 ? QUIET_RETRY_MS : QUIET_RETRY_MS * 4;
+  const bool quietRetryDue = withinQuietWindow && (lastReconnectAttempt == 0 || now - lastReconnectAttempt >= retryEvery);
   if (!userInputDetected && !quietRetryDue) {
     LOG_DBG("BT", "AutoReconnect skipped: no local user input");
     return;

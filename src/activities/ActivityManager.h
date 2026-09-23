@@ -85,6 +85,7 @@ class ActivityManager {
   void goToBrowser();
   void goToReader(std::string path);
   void goToGame();
+  void goToIpadSync();
   void goToSleep();
   void goToBoot();
   void goToFullScreenMessage(std::string message, EpdFontFamily::Style style = EpdFontFamily::REGULAR);

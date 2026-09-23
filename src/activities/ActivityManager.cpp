@@ -10,6 +10,7 @@
 #include "home/HomeActivity.h"
 #include "home/RecentBooksActivity.h"
 #include "network/CrossPointWebServerActivity.h"
+#include "network/IpadSyncActivity.h"
 #include "reader/ReaderActivity.h"
 #include "settings/BluetoothSettingsActivity.h"
 #include "settings/SettingsActivity.h"
@@ -213,6 +214,10 @@ void ActivityManager::goToGame() {
         }
         replaceActivity(std::make_unique<GameActivity>(renderer, mappedInput, [] { activityManager.goToGame(); }));
       }));
+}
+
+void ActivityManager::goToIpadSync() {
+  replaceActivity(std::make_unique<IpadSyncActivity>(renderer, mappedInput));
 }
 
 void ActivityManager::goToSleep() {

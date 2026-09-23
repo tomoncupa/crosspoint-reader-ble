@@ -26,6 +26,7 @@ class HomeActivity final : public Activity {
   void onSettingsOpen();
   void onFileTransferOpen();
   void onGameOpen();
+  void onIpadSyncOpen();
   void onOpdsBrowserOpen();
 
   int getMenuItemCount() const;
