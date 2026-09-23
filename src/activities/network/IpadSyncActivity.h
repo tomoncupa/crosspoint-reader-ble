@@ -1,28 +1,31 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "IpadSyncEngine.h"
 #include "activities/Activity.h"
+
+class Epub;
 
 /**
  * iPad Sync: brings the books and reading places of Tom's iPad reader
  * (tomoncupa.github.io/reader) onto this device, through the same Firebase
- * Realtime Database the iPad syncs to. Books land at the top of the SD card, beside
- * everything else. Nothing runs in the background: WiFi
- * comes on when this screen opens and goes off the moment the sync ends.
+ * Realtime Database the iPad syncs to. The work itself is in IpadSyncEngine.
  *
- * Set up by a two-line text file at the root of the SD card, /ipad-sync.txt,
- * which the iPad reader saves for you (Settings, Sync, Save setup file):
- *   https://<database>.firebasedatabase.app
- *   <sync code>
- *
- * Places travel as a percentage of the book, so they land within a page.
+ * From the main menu it syncs the whole library. From the reader menu it syncs only the
+ * open book's place, then hands back to the reader, which reopens at the synced place.
+ * WiFi comes on when this screen opens and goes off the moment the sync ends.
  */
 class IpadSyncActivity final : public Activity {
  public:
   explicit IpadSyncActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
       : Activity("IpadSync", renderer, mappedInput) {}
+  // One book, from inside the reader
+  IpadSyncActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::shared_ptr<Epub> openEpub,
+                   std::string bookPath)
+      : Activity("IpadSync", renderer, mappedInput), openEpub(std::move(openEpub)), bookPath(std::move(bookPath)) {}
 
   void onEnter() override;
   void onExit() override;
@@ -38,12 +41,13 @@ class IpadSyncActivity final : public Activity {
   std::string detail;
   int percent = -1;
   std::vector<std::string> summary;
-  std::string dbUrl;
-  std::string syncCode;
+  IpadSync::Setup setup;
+  std::shared_ptr<Epub> openEpub;
+  std::string bookPath;
 
-  bool loadSetup();
+  void connect();
   void onWifiReady(bool connected);
-  void runSync();
+  void leave();
   void show(const std::string& newStatus, const std::string& newDetail = "", int newPercent = -1);
   void fail(const std::string& why);
 };

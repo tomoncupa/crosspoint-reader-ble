@@ -40,6 +40,14 @@ void RecentBooksStore::addBook(const std::string& path, const std::string& title
   saveToFile();
 }
 
+void RecentBooksStore::removeBook(const std::string& path) {
+  auto it =
+      std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
+  if (it == recentBooks.end()) return;
+  recentBooks.erase(it);
+  saveToFile();
+}
+
 void RecentBooksStore::updateBook(const std::string& path, const std::string& title, const std::string& author,
                                   const std::string& coverBmpPath) {
   auto it =

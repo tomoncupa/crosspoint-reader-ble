@@ -13,6 +13,7 @@
 #include <Logging.h>
 #include <SPI.h>
 #include <builtinFonts/all.h>
+#include <esp_sleep.h>
 
 #include <cstring>
 
@@ -23,6 +24,7 @@
 #include "RecentBooksStore.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
+#include "activities/network/IpadSyncEngine.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/ButtonNavigator.h"
@@ -135,6 +137,32 @@ EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 unsigned long t1 = 0;
 unsigned long t2 = 0;
 
+// While charging, the chip keeps power in sleep, so a timer can wake it to sync with the
+// iPad every 30 minutes. On battery the chip is fully off in sleep and no timer runs, so
+// this costs no battery. The screen is never touched: the sleep picture stays up.
+static constexpr uint64_t CHARGING_SYNC_EVERY_US = 30ULL * 60 * 1000000;
+
+void armChargingSync() {
+  if (gpio.isUsbConnected() && IpadSync::hasSetup()) esp_sleep_enable_timer_wakeup(CHARGING_SYNC_EVERY_US);
+}
+
+void chargingSyncThenSleep() {
+  if (gpio.isUsbConnected() && IpadSync::hasSetup()) {
+    LOG_INF("MAIN", "Charging: syncing with the iPad");
+    APP_STATE.loadFromFile();
+    RECENT_BOOKS.loadFromFile();
+    IpadSync::Setup setup;
+    if (IpadSync::loadSetup(setup) && IpadSync::connectSavedWifi(20000)) {
+      IpadSync::syncClock();
+      const auto outcome = IpadSync::run(setup, {});
+      LOG_INF("MAIN", "Charging sync %s", outcome.ok ? "done" : outcome.error.c_str());
+    }
+    IpadSync::wifiOff();
+  }
+  armChargingSync();
+  powerManager.startDeepSleep(gpio);
+}
+
 // Verify power button press duration on wake-up from deep sleep
 // Pre-condition: isWakeupByPowerButton() == true
 void verifyPowerButtonDuration() {
@@ -175,6 +203,7 @@ void verifyPowerButtonDuration() {
   if (abort) {
     // Button released too early. Returning to sleep.
     // IMPORTANT: Re-arm the wakeup trigger before sleeping again
+    armChargingSync();
     powerManager.startDeepSleep(gpio);
   }
 }
@@ -205,6 +234,7 @@ void enterDeepSleep() {
   LOG_DBG("MAIN", "Power button press calibration value: %lu ms", t2 - t1);
   LOG_DBG("MAIN", "Entering deep sleep");
 
+  armChargingSync();
   powerManager.startDeepSleep(gpio);
 }
 
@@ -283,6 +313,9 @@ void setup() {
   btMgr.setBondedDevice(SETTINGS.bleBondedDeviceAddr, SETTINGS.bleBondedDeviceName);
   LOG_INF("MAIN", "Bluetooth HID initialized with button injection");
 
+  // The charging timer: sync with the screen off, then straight back to sleep
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) chargingSyncThenSleep();
+
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:
       // For normal wakeups, verify power button press duration
@@ -290,9 +323,9 @@ void setup() {
       verifyPowerButtonDuration();
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
-      // If USB power caused a cold boot, go back to sleep
+      // Plugged in while off: sync with the iPad, then back to sleep with the charging timer
       LOG_DBG("MAIN", "Wakeup reason: After USB Power");
-      powerManager.startDeepSleep(gpio);
+      chargingSyncThenSleep();
       break;
     case HalGPIO::WakeupReason::AfterFlash:
       // After flashing, just proceed to boot

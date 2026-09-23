@@ -25,6 +25,7 @@
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "activities/network/IpadSyncActivity.h"
 #include "util/ScreenshotUtil.h"
 
 namespace {
@@ -450,6 +451,28 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       requestUpdate();
       break;
     }
+    case EpubReaderMenuActivity::MenuAction::IPAD_SYNC: {
+      startActivityForResult(std::make_unique<IpadSyncActivity>(renderer, mappedInput, epub, epub->getPath()),
+                             [this](const ActivityResult& result) {
+                               if (result.isCancelled) return;
+                               // The sync may have moved the place: take it from the saved progress
+                               FsFile f;
+                               if (!Storage.openFileForRead("ERS", epub->getCachePath() + "/progress.bin", f)) return;
+                               uint8_t d[4];
+                               const int n = f.read(d, 4);
+                               f.close();
+                               if (n != 4) return;
+                               const int spine = d[0] + (d[1] << 8);
+                               const int page = d[2] + (d[3] << 8);
+                               if (spine != currentSpineIndex || (section && section->currentPage != page)) {
+                                 RenderLock lock(*this);
+                                 currentSpineIndex = spine;
+                                 nextPageNumber = page;
+                                 section.reset();
+                               }
+                             });
+      break;
+    }
     case EpubReaderMenuActivity::MenuAction::SYNC: {
       if (KOREADER_STORE.hasCredentials()) {
         const int currentPage = section ? section->currentPage : 0;
@@ -561,6 +584,7 @@ void EpubReaderActivity::pageTurn(bool isForwardTurn) {
     }
   }
   lastPageTurnTime = millis();
+  IpadSync::notePageTurn();
   requestUpdate();
 }
 
@@ -581,6 +605,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
 
   // Show end of book screen
   if (currentSpineIndex == epub->getSpineItemsCount()) {
+    IpadSync::noteFinished(epub->getPath());
     renderer.clearScreen();
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_END_OF_BOOK), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();

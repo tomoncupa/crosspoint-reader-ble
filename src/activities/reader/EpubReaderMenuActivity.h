@@ -22,6 +22,7 @@ class EpubReaderMenuActivity final : public Activity {
     GO_HOME,
     BLUETOOTH,
     SYNC,
+    IPAD_SYNC,
     DELETE_CACHE
   };
 
@@ -38,6 +39,7 @@ class EpubReaderMenuActivity final : public Activity {
   struct MenuItem {
     MenuAction action;
     StrId labelId;
+    const char* label = nullptr;  // plain text, for items with no translation
   };
 
   static std::vector<MenuItem> buildMenuItems(bool hasFootnotes);
