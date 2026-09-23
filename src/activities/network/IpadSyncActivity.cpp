@@ -164,10 +164,18 @@ class Base64ToFile final : public Stream {
     }
     return n;
   }
+  // Each piece is its own JSON string with its own padding, so the decoder starts clean
+  // for every piece. Carrying leftover bits across would corrupt everything after 1 MB.
+  void nextPiece() {
+    acc_ = 0;
+    bits_ = 0;
+    started_ = false;
+  }
   bool finish() {
     flushOut();
     return ok_ && started_;
   }
+  bool pieceOk() const { return ok_ && started_; }
   int available() override { return 0; }
   int read() override { return -1; }
   int peek() override { return -1; }
@@ -446,8 +454,9 @@ void IpadSyncActivity::runSync() {
           char line[48];
           snprintf(line, sizeof(line), "Book %d of %d", n, static_cast<int>(remote.size()));
           show(std::string("Downloading ") + line, label, (c * 100) / r.chunks);
+          sink.nextPiece();
           const int got = getStream(base + "/files/" + enc(r.key) + "/" + std::to_string(c) + ".json", sink);
-          ok = got == HTTP_CODE_OK;
+          ok = got == HTTP_CODE_OK && sink.pieceOk();
         }
         ok = sink.finish() && ok;
         f.close();
