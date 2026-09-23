@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <RadioCoexistence.h>
 #include <WiFi.h>
 
 #include "MappedInputManager.h"
@@ -55,6 +56,7 @@ void OtaUpdateActivity::onEnter() {
 
   // Turn on WiFi immediately
   LOG_DBG("OTA", "Turning on WiFi...");
+  releaseRadioForWifi();
   WiFi.mode(WIFI_STA);
 
   // Launch WiFi selection subactivity

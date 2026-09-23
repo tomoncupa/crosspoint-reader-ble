@@ -127,8 +127,15 @@ private:
   bool _debugCaptureEnabled = false;
   std::string _bondedDeviceAddress;
   std::string _bondedDeviceName;
+  // When the remote was last heard from, kept across disconnects so the device can
+  // quietly try to get it back for as long as the inactivity window lasts.
+  unsigned long _lastRemoteActivityMs = 0;
   
   // Inactivity timeout (milliseconds)
-  static constexpr unsigned long INACTIVITY_TIMEOUT_MS = 300000;  // 5 minutes
+  // 25 minutes: a remote left alone through a long stretch of reading stays paired.
+  // Note the device's own sleep timeout still applies, and sleeping drops the link.
+  static constexpr unsigned long INACTIVITY_TIMEOUT_MS = 1500000;  // 25 minutes
+  // How often to try the paired remote again while it is away but the window is open
+  static constexpr unsigned long QUIET_RETRY_MS = 30000;  // 30 seconds
   unsigned long lastMaintenanceCheck = 0;
 };

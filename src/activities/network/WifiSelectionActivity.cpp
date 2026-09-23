@@ -3,6 +3,7 @@
 #include <GfxRenderer.h>
 #include <I18n.h>
 #include <Logging.h>
+#include <RadioCoexistence.h>
 #include <WiFi.h>
 
 #include <map>
@@ -94,6 +95,7 @@ void WifiSelectionActivity::startWifiScan() {
   requestUpdate();
 
   // Set WiFi mode to station
+  releaseRadioForWifi();
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
@@ -217,6 +219,7 @@ void WifiSelectionActivity::attemptConnection() {
   connectionError.clear();
   requestUpdate();
 
+  releaseRadioForWifi();
   WiFi.mode(WIFI_STA);
 
   // Set hostname so routers show "CrossPoint-Reader-AABBCCDDEEFF" instead of "esp32-XXXXXXXXXXXX"

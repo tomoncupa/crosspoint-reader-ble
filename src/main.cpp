@@ -37,6 +37,11 @@ FontDecompressor fontDecompressor;
 FontCacheManager fontCacheManager(renderer.getFontMap());
 static volatile bool gBluetoothReaderContext = false;
 
+// Waking from sleep is a fresh boot, so the remote's link is gone. For the first minute
+// after waking, keep trying the paired remote without waiting for a button on the device.
+static constexpr unsigned long BLE_WAKE_WINDOW_MS = 60000;
+static unsigned long gBleWakeWindowUntilMs = 0;
+
 // Fonts
 EpdFont bookerly14RegularFont(&bookerly_14_regular);
 EpdFont bookerly14BoldFont(&bookerly_14_bold);
@@ -320,6 +325,19 @@ void setup() {
     activityManager.goToReader(path);
   }
 
+  // Bluetooth was left on in settings, so bring it back up here rather than waiting for
+  // a visit to the Bluetooth screen, and open the reconnect window.
+  if (SETTINGS.bluetoothEnabled) {
+    auto& bt = BluetoothHIDManager::getInstance();
+    if (!bt.isEnabled() && !bt.enable()) {
+      LOG_ERR("MAIN", "Bluetooth failed to start at boot: %s", bt.lastError.c_str());
+    } else {
+      gBleWakeWindowUntilMs = millis() + BLE_WAKE_WINDOW_MS;
+      LOG_INF("MAIN", "Bluetooth on at boot, looking for the paired remote for %lu s",
+              BLE_WAKE_WINDOW_MS / 1000);
+    }
+  }
+
   // Ensure we're not still holding the power button before leaving setup
   waitForPowerRelease();
 }
@@ -338,7 +356,16 @@ void loop() {
   auto& btMgr = BluetoothHIDManager::getInstance();
   bleEnabled = btMgr.isEnabled();
   btMgr.updateActivity();
-  btMgr.checkAutoReconnect(userInputDetected);
+  const bool bleWakeWindow = gBleWakeWindowUntilMs != 0 && millis() < gBleWakeWindowUntilMs;
+  btMgr.checkAutoReconnect(userInputDetected || bleWakeWindow);
+  if (gBleWakeWindowUntilMs != 0 && (!bleWakeWindow || !btMgr.getConnectedDevices().empty())) {
+    if (!btMgr.getConnectedDevices().empty()) {
+      LOG_INF("MAIN", "Remote connected, closing the reconnect window");
+    } else {
+      LOG_INF("MAIN", "Reconnect window closed with no remote");
+    }
+    gBleWakeWindowUntilMs = 0;
+  }
   bleRecentActivity = btMgr.hasRecentActivity();
 
   renderer.setFadingFix(SETTINGS.fadingFix);

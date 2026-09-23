@@ -538,6 +538,7 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     connDev.connectedTime = millis();
     connDev.subscribed = true;
     connDev.lastActivityTime = millis();  // Initialize activity timer
+    _lastRemoteActivityMs = connDev.lastActivityTime;
     connDev.wasConnected = true;  // Mark for auto-reconnect if disconnected
     connDev.descriptorHasKeyboardPage = reportHints.hasKeyboardPage;
     connDev.descriptorHasConsumerPage = reportHints.hasConsumerPage;
@@ -798,6 +799,7 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
   
   // Update activity timestamp to keep connection alive
   device->lastActivityTime = millis();
+  g_instance->_lastRemoteActivityMs = device->lastActivityTime;
   // Only Free2 needs hold-time capping based on BLE activity. Other remotes,
   // including GameBrick, should keep the original virtual hold semantics so
   // long-press chapter skip continues to use the full press duration.
@@ -1707,8 +1709,11 @@ void BluetoothHIDManager::checkAutoReconnect(bool userInputDetected) {
     return;
   }
 
-  // Reconnect is user-driven while reading: require a local button event.
-  if (!userInputDetected) {
+  // Reconnect is user-driven while reading: a local button event, or a quiet retry
+  // while the remote is still inside its inactivity window (it may have dozed off itself).
+  const bool withinQuietWindow = _lastRemoteActivityMs != 0 && (now - _lastRemoteActivityMs) < INACTIVITY_TIMEOUT_MS;
+  const bool quietRetryDue = withinQuietWindow && (lastReconnectAttempt == 0 || now - lastReconnectAttempt >= QUIET_RETRY_MS);
+  if (!userInputDetected && !quietRetryDue) {
     LOG_DBG("BT", "AutoReconnect skipped: no local user input");
     return;
   }
