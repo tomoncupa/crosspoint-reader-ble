@@ -31,7 +31,7 @@
 namespace {
 constexpr char SETUP_PATH[] = "/ipad-sync.txt";
 constexpr char INDEX_PATH[] = "/.crosspoint/ipad-sync.tsv";
-constexpr char BOOKS_DIR[] = "/iPad";
+constexpr char BOOKS_DIR[] = "";  // the top of the SD card, where the X4 keeps its own downloads
 constexpr char CACHE_DIR[] = "/.crosspoint";
 
 // ---------- WiFi and time, the same way the KOReader sync does it ----------
@@ -422,14 +422,13 @@ void IpadSyncActivity::runSync() {
   // 2. Books: find each one here, or fetch it
   int downloaded = 0, downloadFailed = 0;
   int n = 0;
-  Storage.mkdir(BOOKS_DIR);
   for (const auto& r : remote) {
     n++;
     Rec* rec = findRec(index, r.key);
     if (rec && Storage.exists(rec->path.c_str())) continue;
     // Copied over by hand under its own name?
     std::string found;
-    for (const std::string& dir : {std::string(""), std::string(BOOKS_DIR)}) {
+    for (const std::string& dir : {std::string(""), std::string("/iPad")}) {
       const std::string p = dir + "/" + r.name;
       if (!r.name.empty() && Storage.exists(p.c_str())) {
         found = p;
@@ -568,7 +567,7 @@ void IpadSyncActivity::runSync() {
     snprintf(buf, sizeof(buf), count == 1 ? one : many, count);
     lines.emplace_back(buf);
   };
-  add(downloaded, "%d book downloaded to /iPad", "%d books downloaded to /iPad");
+  add(downloaded, "%d book downloaded", "%d books downloaded");
   add(pulled, "%d place brought over from the iPad", "%d places brought over from the iPad");
   add(pushed, "%d place sent to the iPad", "%d places sent to the iPad");
   add(downloadFailed, "%d book failed to download", "%d books failed to download");

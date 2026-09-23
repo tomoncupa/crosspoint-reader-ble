@@ -8,7 +8,8 @@
 /**
  * iPad Sync: brings the books and reading places of Tom's iPad reader
  * (tomoncupa.github.io/reader) onto this device, through the same Firebase
- * Realtime Database the iPad syncs to. Nothing runs in the background: WiFi
+ * Realtime Database the iPad syncs to. Books land at the top of the SD card, beside
+ * everything else. Nothing runs in the background: WiFi
  * comes on when this screen opens and goes off the moment the sync ends.
  *
  * Set up by a two-line text file at the root of the SD card, /ipad-sync.txt,
