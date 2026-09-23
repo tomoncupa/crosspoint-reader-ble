@@ -16,6 +16,5 @@ void BootActivity::onEnter() {
   renderer.drawImage(TomLogo240, (pageWidth - 240) / 2, (pageHeight - 240) / 2 - 30, 240, 240);
   renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 + 115, "Tom Custom Firmware .1", true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 145, tr(STR_BOOTING));
-  renderer.drawCenteredText(SMALL_FONT_ID, pageHeight - 30, "based on CrossPoint 1.2 BLE");
   renderer.displayBuffer();
 }
