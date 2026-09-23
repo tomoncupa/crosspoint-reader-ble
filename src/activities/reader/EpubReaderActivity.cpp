@@ -227,6 +227,8 @@ void EpubReaderActivity::loop() {
 
   // any botton press when at end of the book goes back to the last page
   if (currentSpineIndex > 0 && currentSpineIndex >= epub->getSpineItemsCount()) {
+    // Left the end screen by paging back, so it was not the end after all
+    IpadSync::noteNotFinished(epub->getPath());
     currentSpineIndex = epub->getSpineItemsCount() - 1;
     nextPageNumber = UINT16_MAX;
     requestUpdate();

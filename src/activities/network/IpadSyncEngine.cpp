@@ -444,6 +444,20 @@ void noteFinished(const std::string& path) {
   writeSmallFile(FINISHED_PATH, all + path + "\n");
 }
 
+void noteNotFinished(const std::string& path) {
+  const std::string all = readSmallFile(FINISHED_PATH);
+  if (all.empty()) return;
+  std::string keep;
+  for (const auto& line : split(all, '\n'))
+    if (!line.empty() && line != path) keep += line + "\n";
+  if (keep.size() == all.size()) return;
+  if (keep.empty()) {
+    Storage.remove(FINISHED_PATH);
+  } else {
+    writeSmallFile(FINISHED_PATH, keep);
+  }
+}
+
 // ---------- the sync ----------
 Outcome run(const Setup& setup, const Options& options) {
   Outcome out;

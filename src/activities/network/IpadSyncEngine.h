@@ -59,5 +59,7 @@ bool connectSavedWifi(unsigned long timeoutMs);
 void notePageTurn();
 // Called by the reader: this book reached its end screen
 void noteFinished(const std::string& path);
+// Called by the reader: it paged back off the end screen, so that was a slip
+void noteNotFinished(const std::string& path);
 
 }  // namespace IpadSync
