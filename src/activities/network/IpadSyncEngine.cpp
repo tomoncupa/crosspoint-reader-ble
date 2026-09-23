@@ -471,6 +471,11 @@ Outcome run(const Setup& setup, const Options& options) {
     out.error = why;
     return out;
   };
+  auto stop = [&options, &out]() {
+    if (!options.shouldStop || !options.shouldStop()) return false;
+    out.stopped = true;
+    return true;
+  };
 
   // The iPad's time zone, so "today" here is today there
   {
@@ -524,6 +529,8 @@ Outcome run(const Setup& setup, const Options& options) {
       remote.push_back(r);
     }
   }
+
+  if (stop()) return fail("Stopped.");
 
   // 2. Books finished here: marked finished on the iPad too
   int finishedSent = 0;
@@ -582,6 +589,7 @@ Outcome run(const Setup& setup, const Options& options) {
     int n = 0;
     for (const auto& r : remote) {
       n++;
+      if (stop()) return fail("Stopped.");
       if (r.finished) continue;
       Rec* rec = findRec(index, r.key);
       if (rec && Storage.exists(rec->path.c_str())) continue;
@@ -608,7 +616,7 @@ Outcome run(const Setup& setup, const Options& options) {
         bool ok = Storage.openFileForWrite("IPS", part, f);
         if (ok) {
           Base64ToFile sink(f);
-          for (int c = 0; c < r.chunks && ok; c++) {
+          for (int c = 0; c < r.chunks && ok && !stop(); c++) {
             char line[48];
             snprintf(line, sizeof(line), "Book %d of %d", n, static_cast<int>(remote.size()));
             show(std::string("Downloading ") + line, label, (c * 100) / r.chunks);
@@ -616,7 +624,7 @@ Outcome run(const Setup& setup, const Options& options) {
             const int got = getStream(base + "/files/" + enc(r.key) + "/" + std::to_string(c) + ".json", sink);
             ok = got == HTTP_CODE_OK && sink.pieceOk();
           }
-          ok = sink.finish() && ok;
+          ok = sink.finish() && ok && !out.stopped;
           f.close();
         }
         if (!ok) {
@@ -642,6 +650,8 @@ Outcome run(const Setup& setup, const Options& options) {
     }
   }
 
+  if (stop()) return fail("Stopped.");
+
   // 5. Places: whichever side moved since the last sync wins; if both did, the further one
   show("Matching reading places...");
   JsonDocument posDoc;
@@ -664,6 +674,7 @@ Outcome run(const Setup& setup, const Options& options) {
   for (auto& rec : index) {
     if (!whole && rec.path != options.onlyPath) continue;
     if (extOf(rec.path) != "epub" || !Storage.exists(rec.path.c_str())) continue;
+    if (stop()) break;
 
     JsonVariant rp = whole ? posDoc[rec.key.c_str()].as<JsonVariant>() : posDoc.as<JsonVariant>();
     const bool hasRemote = rp["p"].is<float>() || rp["p"].is<int>();

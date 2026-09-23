@@ -39,12 +39,15 @@ struct Options {
   // The book as the reader already has it open, so it is not loaded twice
   std::shared_ptr<Epub> openEpub;
   Progress progress;
+  // Asked between steps and between book pieces; true stops the sync where it is
+  std::function<bool()> shouldStop;
 };
 
 struct Outcome {
   bool ok = false;
   std::string error;
   std::vector<std::string> lines;
+  bool stopped = false;
 };
 
 // WiFi must already be connected

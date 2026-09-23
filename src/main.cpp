@@ -146,6 +146,7 @@ void armChargingSync() {
   if (gpio.isUsbConnected() && IpadSync::hasSetup()) esp_sleep_enable_timer_wakeup(CHARGING_SYNC_EVERY_US);
 }
 
+// Returns only when the power button was pressed during the sync: the device then starts up as normal
 void chargingSyncThenSleep() {
   if (gpio.isUsbConnected() && IpadSync::hasSetup()) {
     LOG_INF("MAIN", "Charging: syncing with the iPad");
@@ -154,8 +155,17 @@ void chargingSyncThenSleep() {
     IpadSync::Setup setup;
     if (IpadSync::loadSetup(setup) && IpadSync::connectSavedWifi(20000)) {
       IpadSync::syncClock();
-      const auto outcome = IpadSync::run(setup, {});
+      IpadSync::Options options;
+      options.shouldStop = [] {
+        gpio.update();
+        return gpio.isPressed(HalGPIO::BTN_POWER);
+      };
+      const auto outcome = IpadSync::run(setup, options);
       LOG_INF("MAIN", "Charging sync %s", outcome.ok ? "done" : outcome.error.c_str());
+      if (outcome.stopped) {
+        IpadSync::wifiOff();
+        return;  // the power button: wake up properly
+      }
     }
     IpadSync::wifiOff();
   }
