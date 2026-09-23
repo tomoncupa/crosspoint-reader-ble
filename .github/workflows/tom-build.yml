@@ -29,9 +29,13 @@ jobs:
       - name: Build CrossPoint (personal)
         run: pio run -e gh_release_personal
 
+      - name: Build CrossPoint (personal, USB log on)
+        run: pio run -e gh_debug_personal
+
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ github.sha }}
           path: |
             .pio/build/gh_release_personal/firmware.bin
+            .pio/build/gh_debug_personal/firmware.bin
