@@ -71,7 +71,9 @@ public:
   const std::vector<BluetoothDevice>& getDiscoveredDevices() const { return _discoveredDevices; }
 
   // Connection
-  bool connectToDevice(const std::string& address);
+  // timeoutMs: how long the connect may block the caller. Automatic reconnects use a short one
+  // so the buttons stay responsive while the remote is off; they also skip the second try.
+  bool connectToDevice(const std::string& address, uint32_t timeoutMs = 10000);
   bool disconnectFromDevice(const std::string& address);
   bool isConnected(const std::string& address) const;
   std::vector<std::string> getConnectedDevices() const;

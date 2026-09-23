@@ -36,6 +36,7 @@ constexpr uint16_t BLE_CONN_TIMEOUT = 600;       // 6s
 constexpr uint16_t BLE_CONN_SCAN_INTERVAL = 60;
 constexpr uint16_t BLE_CONN_SCAN_WINDOW = 30;
 constexpr uint32_t BLE_CONNECT_TIMEOUT_MS = 10000;
+constexpr uint32_t BLE_QUICK_CONNECT_TIMEOUT_MS = 1000;
 constexpr unsigned long FREE2_STALE_RELEASE_DEFAULT_MS = 250;
 constexpr unsigned long FREE2_STALE_RELEASE_READER_MS = 500;
 }
@@ -349,7 +350,7 @@ void BluetoothHIDManager::onScanResult(NimBLEAdvertisedDevice* advertisedDevice)
           device.name.c_str(), device.address.c_str(), rssi, isHID);
 }
 
-bool BluetoothHIDManager::connectToDevice(const std::string& address) {
+bool BluetoothHIDManager::connectToDevice(const std::string& address, uint32_t timeoutMs) {
   if (!_enabled) {
     LOG_ERR("BT", "Cannot connect: Bluetooth not enabled");
     lastError = "Bluetooth not enabled";
@@ -387,7 +388,7 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
 
     // Keep client lifetime under manager control so disconnect callbacks do not free it in NimBLE context.
     pClient->setSelfDelete(false, false);
-    pClient->setConnectTimeout(BLE_CONNECT_TIMEOUT_MS);
+    pClient->setConnectTimeout(timeoutMs);
     pClient->setConnectionParams(BLE_CONN_MIN_INTERVAL, BLE_CONN_MAX_INTERVAL, BLE_CONN_LATENCY, BLE_CONN_TIMEOUT,
                                  BLE_CONN_SCAN_INTERVAL, BLE_CONN_SCAN_WINDOW);
 
@@ -401,13 +402,18 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     
     // Connect to device
     if (!pClient->connect(bleAddress)) {
+      if (timeoutMs < BLE_CONNECT_TIMEOUT_MS) {
+        lastError = "Connection failed";
+        LOG_DBG("BT", "Quick reconnect to %s missed", address.c_str());
+        return false;
+      }
       if (hadExistingClient) {
         LOG_INF("BT", "Reconnect with existing client failed for %s, retrying with fresh client", address.c_str());
         NimBLEClient* freshClient = NimBLEDevice::createClient(bleAddress);
         if (freshClient) {
           pClient = freshClient;
           pClient->setSelfDelete(false, false);
-          pClient->setConnectTimeout(BLE_CONNECT_TIMEOUT_MS);
+          pClient->setConnectTimeout(timeoutMs);
           pClient->setConnectionParams(BLE_CONN_MIN_INTERVAL, BLE_CONN_MAX_INTERVAL, BLE_CONN_LATENCY,
                                        BLE_CONN_TIMEOUT, BLE_CONN_SCAN_INTERVAL, BLE_CONN_SCAN_WINDOW);
           pClient->setClientCallbacks(&clientCallbacks);
@@ -1735,7 +1741,9 @@ void BluetoothHIDManager::checkAutoReconnect(bool userInputDetected) {
   LOG_INF("BT", "Button activity detected while disconnected, reconnecting to bonded device %s",
           _bondedDeviceAddress.c_str());
 
-  if (connectToDevice(_bondedDeviceAddress)) {
+  // A remote that is on and advertising answers well inside this; one that is off must not
+  // hold the buttons for 10-20 s each try (it did, for the first minute after every wake).
+  if (connectToDevice(_bondedDeviceAddress, BLE_QUICK_CONNECT_TIMEOUT_MS)) {
     LOG_INF("BT", "Reconnected to bonded device %s", _bondedDeviceAddress.c_str());
   } else {
     LOG_ERR("BT", "Reconnect to bonded device %s failed: %s", _bondedDeviceAddress.c_str(), lastError.c_str());
